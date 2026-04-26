@@ -1,0 +1,28 @@
+{
+  "random_forest": {
+    "test_accuracy": 86.96,
+    "cv_mean": 87.96,
+    "cv_std": 0.98
+  },
+  "xgboost": {
+    "test_accuracy": 88.21,
+    "cv_mean": 89.79,
+    "cv_std": 1.21
+  },
+  "n_features": 106,
+  "n_classes": 10,
+  "classes": [
+    "Agriculture & Environmental Sciences",
+    "Business & Finance",
+    "Computer Science & IT",
+    "Creative Arts & Design",
+    "Education & Humanities",
+    "Engineering & Technology",
+    "Entrepreneurship & Management",
+    "Law & Social Sciences",
+    "Mass Communication & Media",
+    "Medicine & Health Sciences"
+  ],
+  "train_rows": 2240,
+  "test_rows": 560
+}
