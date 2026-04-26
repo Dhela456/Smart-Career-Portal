@@ -385,11 +385,6 @@ def login_user(email, password):
     user = c.fetchone(); conn.close()
     return user if (user and check_password(password, user[4])) else None
 
-def clear_user_data():
-    for k in ["active_test","test_answers","test_scores","all_tests_done",
-              "user_id","full_name","class_level","department","rec_cache","chat_cache"]:
-        st.session_state.pop(k, None)
-    st.session_state.logged_in = False
 
 def save_academic_result(user_id, result_type, subject, score, exam_date):
     conn = sqlite3.connect("career_portal.db")
@@ -497,6 +492,7 @@ def score_aptitude(answers, questions, department):
 def score_likert(answers, questions):
     scores = [answers[q["id"]]+1 for q in questions if answers.get(q["id"]) is not None]
     return round(sum(scores)/(len(scores)*5)*100, 1) if scores else 0.0
+
 
 # ====================== ML INFERENCE ======================
 def build_feature_vector(results, profile):
@@ -767,14 +763,6 @@ def translate_role_for_streamlit(user_role):
     else:
         return user_role
 
-# ====================== SESSION STATE ======================
-for k, v in [("logged_in",False),("user_id",None),("full_name",None),
-              ("class_level",None),("department",None),("active_test",None),
-              ("test_answers",{}),("test_scores",{}),("all_tests_done",False),
-              ("rec_cache",None),("chat_cache",None)]:
-    if k not in st.session_state:
-        st.session_state[k] = v
-
 
 init_db()
 create_admin_user()
@@ -838,6 +826,41 @@ def render_test(meta, completed_tests):
             st.success(f"🎉 {meta['label']} submitted! Score: **{score}%**")
             st.rerun()
 
+# ====================== CLEAR USER DATA ON LOGOUT ======================
+def clear_user_data():
+    """Clears all user-specific progress and temporary data on logout"""
+    keys_to_clear = [
+        "upload_dir",
+        "active_test",
+        "test_answers",
+        "test_scores",
+        "all_tests_done",
+        "user_id",
+        "full_name",
+        "class_level",
+        "department"
+    ]
+    
+    for key in keys_to_clear:
+        if key in st.session_state:
+            del st.session_state[key]
+    
+    # Reset login status
+    st.session_state.logged_in = False
+    st.session_state.pop("user_id", None)
+    st.session_state.pop("full_name", None)
+    st.session_state.pop("class_level", None)
+    st.session_state.pop("department", None)
+
+# ====================== SESSION STATE ======================
+for k, v in [("logged_in",False),("user_id",None),("full_name",None),
+              ("class_level",None),("department",None),("active_test",None),
+              ("test_answers",{}),("test_scores",{}),("all_tests_done",False),
+              ("rec_cache",None),("chat_cache",None)]:
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+
 # ====================== MAIN APP ======================
 def app():
     # ── AUTH ────────────────────────────────────────────────────────────────
@@ -845,7 +868,7 @@ def app():
         st.markdown('<div class="container">', unsafe_allow_html=True)
         st.markdown('<div class="title">🎓 Student Career Portal</div>', unsafe_allow_html=True)
         st.markdown('<div class="subtitle">Smart Career Path Recommendation for Nigerian Secondary School Students</div>', unsafe_allow_html=True)
-        st.info("**Demo Admin Login**  \nEmail: `Admin`  |  Password: `Admin`", icon="🔑")
+        #st.info("**Demo Admin Login**  \nEmail: `Admin`  |  Password: `Admin`", icon="🔑")
 
         auth_tab = st.radio("", ["Sign Up","Login"], horizontal=True, label_visibility="collapsed")
 
@@ -855,8 +878,9 @@ def app():
                 dob         = st.date_input("Date of Birth",
                                             max_value=datetime.date.today(),
                                             min_value=datetime.date(1990,1,1))
-                class_level = st.selectbox("Class", ["Select Your Class","JSS 2","JSS 3","SSS 1","SSS 2"])
-                department  = st.selectbox("Department", ["Select Department","Science","Arts","Commercial"])
+                class_level = st.segmented_control("Select Your Class", ["JSS 2","JSS 3","SSS 1","SSS 2"])
+                # if class_level in ["SSS 1","SSS 2"]:
+                department  = st.segmented_control("Select Department if in SSS 1 or SSS 2", ["Science","Arts","Commercial"])
                 email       = st.text_input("Email Address")
                 password    = st.text_input("Password", type="password")
                 confirm     = st.text_input("Confirm Password", type="password")
@@ -871,7 +895,7 @@ def app():
                         st.warning("Password must be at least 6 characters.")
                     elif class_level == "Select Your Class":
                         st.warning("Please select your class.")
-                    elif class_level in ["SSS 1","SSS 2"] and department == "Select Department":
+                    elif class_level in ["SSS 1","SSS 2"] and department == "Select Department if in SSS 1 or SSS 2":
                         st.warning("Please select your department.")
                     else:
                         dept = department if class_level in ["SSS 1","SSS 2"] else None
@@ -904,6 +928,10 @@ def app():
     # ── LOGGED IN ────────────────────────────────────────────────────────────
     dept_txt = f" — {st.session_state.department}" if st.session_state.department else ""
     st.sidebar.success(f"👋 {st.session_state.full_name}\n{st.session_state.class_level}{dept_txt}")
+    if st.sidebar.button("🚪 Logout", type="secondary"):
+            clear_user_data()
+            st.success("👋 You have been logged out successfully.")
+            st.rerun()
     if not ML_READY:
         st.sidebar.warning("⚠️ ML models not found. Run `train_model.ipynb` first.")
 
@@ -976,11 +1004,11 @@ def app():
         with st.form("add_result_form", clear_on_submit=True):
             c1,c2 = st.columns(2)
             with c1:
-                rtype = st.selectbox("Result Type", ["Select Result Type"] + get_result_types(st.session_state.class_level))
+                rtype = st.segmented_control("Select Result Type", options=get_result_types(st.session_state.class_level), default=None)
                 edate = st.date_input("Exam Date", value=datetime.date.today())
             with c2:
                 slist = get_subjects(st.session_state.class_level, st.session_state.department)
-                subj  = st.selectbox("Subject", ["Select Subject"] + slist)
+                subj  = st.segmented_control("Select Subject", options=slist, default=None)
                 score = st.number_input("Score (0–100)", min_value=0.0, max_value=100.0, value=70.0, step=0.5)
 
             if st.form_submit_button("Add This Result", type="primary"):
