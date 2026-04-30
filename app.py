@@ -1323,8 +1323,13 @@ def app():
         return
 
     # ====================== AUTHENTICATION PAGE (Not Logged In) ======================
-    st.markdown('<div class="container">', unsafe_allow_html=True)
-    st.markdown('<div class="title">🎓 Smart Career Portal</div>', unsafe_allow_html=True)
+    st.markdown("""
+        <div class="container">
+
+        <div class="title">🎓 Student Career Portal</div>
+
+        </div>
+        """, unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Smart Career Path Recommendation for Nigerian Secondary Students</div>', unsafe_allow_html=True)
 
 
